@@ -286,7 +286,6 @@ def _get_args():
     _parser.add_argument('-d', '--docs', action='store_true', help='Generate online documentation for the project')
     # TODO: Consider using this to invoke a function when option is specified: test_parser.set_defaults()
     # TODO: Add a -v, --version parameter that loads a version property stored in pyjen scripts and is also used by setup.py
-    # TODO: Add option for generating documentation
 
     # If no command line arguments provided, display the online help and exit
     if len(sys.argv) == 1:
@@ -309,17 +308,17 @@ if __name__ == "__main__":
     if args.prep_env:
         _prepare_env()
 
+    if args.test or args.functional_test:
+        _run_tests(args.functional_test)
+
     if args.package:
         _make_package()
+
+    if args.docs:
+        _make_docs()
 
     if args.stats:
         _code_analysis()
 
     if args.publish:
         _publish()
-
-    if args.test or args.functional_test:
-        _run_tests(args.functional_test)
-
-    if args.docs:
-        _make_docs()
