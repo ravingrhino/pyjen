@@ -89,15 +89,44 @@ def _prepare_env():
 
 
 def _make_package():
+    """Creates the redistributable package for the PyJen project"""
+    import re
+
+    # delete any pre-existing packages
     if os.path.exists("dist"):
         shutil.rmtree("dist")
-    result = subprocess.check_output(["python", "setup.py", "bdist_wheel"], stderr = subprocess.STDOUT, universal_newlines=True)
+
+    # create new package
+    modlog.info("creating package...")
+
+    result = subprocess.check_output(["python", "setup.py", "bdist_wheel"],
+                                     stderr=subprocess.STDOUT, universal_newlines=True)
     modlog.debug(result)
+
+    # delete intermediate folders
     shutil.rmtree("build")
+
+    #sanity check: make sure wheel file exists
+    package_contents = os.listdir("dist")
+    if len(package_contents) > 1:
+        modlog.warning("Multiple files detected in package folder. Only one .whl file expected.")
+
+    wheel_file_found = False
+    wheel_file_pattern = r"^pyjen.*-py2.py3-none-any.whl$"
+    for obj in package_contents:
+        file_path = os.path.join(os.getcwd(), "dist", obj)
+        if os.path.isfile(file_path) and re.search(wheel_file_pattern, obj) is not None:
+            wheel_file_found = True
+
+    if not wheel_file_found:
+        modlog.error("Expected output file (.whl) not found in ./dist folder.")
+        sys.exit(1)
 
     #todo: test package
     #pushd functional_tests > /dev/null
     #./package_tests.sh
+
+    modlog.info("package created successfully")
 
 
 def _publish():
@@ -192,8 +221,8 @@ def _get_args():
     """
     _parser = argparse.ArgumentParser( description='PyJen source project configuration utility')
     
-    _parser.add_argument('-e', '--prep_env', action='store_true', help='Installs all Python packages used by PyJen sources')
-    _parser.add_argument('--package', action='store_true', help='Generates redistributable package for PyJen')
+    _parser.add_argument('-e', '--prep_env', action='store_true', help='Install all Python packages used by PyJen sources')
+    _parser.add_argument('-p', '--package', action='store_true', help='Generate redistributable package for PyJen')
     _parser.add_argument('--stats', action='store_true', help='Run static code analysis again PyJen sources')
     _parser.add_argument('--publish', action='store_true', help='Publish release artifacts online to PyPI')
     _parser.add_argument('--unittest', action='store_true', help='Runs unit test suite for the project')
@@ -220,11 +249,9 @@ if __name__ == "__main__":
     if args.prep_env:
         _prepare_env()
 
-        
     if args.package:
-        modlog.info("creating package...")
         _make_package()
-        modlog.info("package created successfully")
+
 
     if args.stats:
         modlog.info("Running code analysis tools...")
