@@ -176,36 +176,38 @@ def _code_analysis():
         complexity_log_file.write(result)
 
     # next run all code analysers against all source files
-    # TODO: tweak this processing loop to prevent superfluous files from being audited
-    cc_log_filename = os.path.join(log_folder, "stats_cc.log")
-    raw_log_filename = os.path.join(log_folder, "stats_raw.log")
-    mi_log_filename = os.path.join(log_folder, "stats_mi.log")
-    with open(cc_log_filename, "w") as cc_log:
+    stats_log_filename = os.path.join(log_folder, "stats_cc.log")
+    with open(stats_log_filename, "w") as stats_log:
         for (folder, subfolders, files) in os.walk(pyjen_path):
             for cur_file in files:
-                cur_file_full_path = os.path.join(folder, cur_file)
-                result = subprocess.check_output(["radon", "cc", "-sa", cur_file_full_path],
-                                                 stderr=subprocess.STDOUT, universal_newlines=True)
-                modlog.debug(result)
-                cc_log.write(result)
+                if os.path.splitext(cur_file)[1] == ".py":
+                    cur_file_full_path = os.path.join(folder, cur_file)
+                    result = subprocess.check_output(["radon", "cc", "-sa", cur_file_full_path],
+                                                     stderr=subprocess.STDOUT, universal_newlines=True)
+                    modlog.debug(result)
+                    stats_log.write(result)
 
-    with open(raw_log_filename, "w") as raw_log:
+    stats_log_filename = os.path.join(log_folder, "stats_raw.log")
+    with open(stats_log_filename, "w") as stats_log:
         for (folder, subfolders, files) in os.walk(pyjen_path):
             for cur_file in files:
-                cur_file_full_path = os.path.join(folder, cur_file)
-                result = subprocess.check_output(["radon", "raw", "-s", cur_file_full_path],
-                                                 stderr=subprocess.STDOUT, universal_newlines=True)
-                modlog.debug(result)
-                raw_log.write(result)
+                if os.path.splitext(cur_file)[1] == ".py":
+                    cur_file_full_path = os.path.join(folder, cur_file)
+                    result = subprocess.check_output(["radon", "raw", "-s", cur_file_full_path],
+                                                     stderr=subprocess.STDOUT, universal_newlines=True)
+                    modlog.debug(result)
+                    stats_log.write(result)
 
-    with open(mi_log_filename, "w") as mi_log:
+    stats_log_filename = os.path.join(log_folder, "stats_mi.log")
+    with open(stats_log_filename, "w") as stats_log:
         for (folder, subfolders, files) in os.walk(pyjen_path):
             for cur_file in files:
-                cur_file_full_path = os.path.join(folder, cur_file)
-                result = subprocess.check_output(["radon", "mi", "-s", cur_file_full_path],
-                                                 stderr=subprocess.STDOUT, universal_newlines=True)
-                modlog.debug(result)
-                mi_log.write(result)
+                if os.path.splitext(cur_file)[1] == ".py":
+                    cur_file_full_path = os.path.join(folder, cur_file)
+                    result = subprocess.check_output(["radon", "mi", "-s", cur_file_full_path],
+                                                     stderr=subprocess.STDOUT, universal_newlines=True)
+                    modlog.debug(result)
+                    stats_log.write(result)
 
     modlog.info("Radon analysis can be found here: " + log_folder + " (stats*.log)")
     modlog.info("Code analysis complete")
