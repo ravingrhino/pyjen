@@ -148,6 +148,7 @@ def _publish():
     # todo: after the publish completes, auto-update the version number
     modlog.info("release published successfully")
 
+
 def _code_analysis():
     """Generates code analysis reports and metrics on the PyJen sources"""
     modlog.info("Running code analysis tools...")
@@ -156,7 +157,7 @@ def _code_analysis():
     # TODO: Fix pylint report
     #   problem: pylint always returns an error code, so using check_output the output string
     #   never gets returned because the functions throws an exception when a non zero error is returned
-    # TODO: try running pylint directly using: import pylint; pylint.Run()
+    # TODO: try running pylint directly using: import pylint; pylint.Run(args, exit=False, **kwargs)
     pyjen_path = os.path.join(os.path.curdir, "pyjen")
     lint_log_filename = os.path.join(log_folder, "pylint.log")
     cmd = ["pylint", "--rcfile=.pylint", "-f", "parseable", "pyjen", "&", 'exit(0)'.format(lint_log_filename)]
@@ -175,28 +176,40 @@ def _code_analysis():
         complexity_log_file.write(result)
 
     # next run all code analysers against all source files
-    # TODO: Break the logs out into separate files for easier auditing and review
     # TODO: tweak this processing loop to prevent superfluous files from being audited
-    stats_log_filename = os.path.join(log_folder, "stats.log")
-    with open(stats_log_filename, "w") as stats_log:
+    cc_log_filename = os.path.join(log_folder, "stats_cc.log")
+    raw_log_filename = os.path.join(log_folder, "stats_raw.log")
+    mi_log_filename = os.path.join(log_folder, "stats_mi.log")
+    with open(cc_log_filename, "w") as cc_log:
         for (folder, subfolders, files) in os.walk(pyjen_path):
             for cur_file in files:
                 cur_file_full_path = os.path.join(folder, cur_file)
                 result = subprocess.check_output(["radon", "cc", "-sa", cur_file_full_path],
                                                  stderr=subprocess.STDOUT, universal_newlines=True)
                 modlog.debug(result)
-                stats_log.write(result)
+                cc_log.write(result)
+
+    with open(raw_log_filename, "w") as raw_log:
+        for (folder, subfolders, files) in os.walk(pyjen_path):
+            for cur_file in files:
+                cur_file_full_path = os.path.join(folder, cur_file)
                 result = subprocess.check_output(["radon", "raw", "-s", cur_file_full_path],
                                                  stderr=subprocess.STDOUT, universal_newlines=True)
                 modlog.debug(result)
-                stats_log.write(result)
+                raw_log.write(result)
+
+    with open(mi_log_filename, "w") as mi_log:
+        for (folder, subfolders, files) in os.walk(pyjen_path):
+            for cur_file in files:
+                cur_file_full_path = os.path.join(folder, cur_file)
                 result = subprocess.check_output(["radon", "mi", "-s", cur_file_full_path],
                                                  stderr=subprocess.STDOUT, universal_newlines=True)
                 modlog.debug(result)
-                stats_log.write(result)
+                mi_log.write(result)
 
-    modlog.info("Radon analysis can be found here: " + stats_log_filename)
+    modlog.info("Radon analysis can be found here: " + log_folder + " (stats*.log)")
     modlog.info("Code analysis complete")
+
 
 def _run_tests(RunFuncTests):
     """Runs all PyJen tests
@@ -222,6 +235,7 @@ def _run_tests(RunFuncTests):
 
     modlog.info("finished running tests")
 
+
 def _make_docs():
     """Generates the online documentation for the project"""
     modlog.info("Generating API documentation...")
@@ -236,7 +250,7 @@ def _make_docs():
                                      stderr=subprocess.STDOUT, universal_newlines=True)
     modlog.debug(result)
 
-    # Then generate the acutal content
+    # Then generate the actual content
     os.chdir('..')
     result = subprocess.check_output(["make.bat", "html"], stderr=subprocess.STDOUT, universal_newlines=True)
     modlog.debug(result)
@@ -252,6 +266,7 @@ def _make_docs():
 
     # TODO: Find a way to do some basic verification on the documentation output
     modlog.info("Documentation complete")
+
 
 def _configure_logger():
     """Configure the custom logger for this script
@@ -302,7 +317,7 @@ def _get_args():
     _parser.add_argument('-t', '--test', action='store_true', help='Runs the suite of unit tests and generates metrics about the tests')
     _parser.add_argument('-f', '--functional_test', action='store_true', help='Runs the more time consuming functional test suite')
     _parser.add_argument('-d', '--docs', action='store_true', help='Generate online documentation for the project')
-    # TODO: Consider using this to invoke a function when option is specified: test_parser.set_defaults()
+    # TODO: Consider using this to invoke a function when option is specified: parser.set_defaults(function)
 
     # If no command line arguments provided, display the online help and exit
     if len(sys.argv) == 1:
