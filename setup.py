@@ -1,8 +1,9 @@
 from setuptools import setup
+import pyjen
 
 setup(
     name='pyjen',
-    version='0.0.8dev',
+    version=pyjen.VERSION,
     author='Kevin S. Phillips',
     author_email='kevin@thefriendlycoder.com',
     packages=['pyjen', 'pyjen.utils', 'pyjen.plugins'],

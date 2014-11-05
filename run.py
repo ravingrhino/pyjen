@@ -88,6 +88,11 @@ def _prepare_env():
     modlog.info("dependencies installed successfully")
 
 
+def _show_version():
+    """Shows the PyJen version number"""
+    import pyjen
+    modlog.info("PyJen Version " + pyjen.VERSION)
+
 def _make_package():
     """Creates the redistributable package for the PyJen project"""
     import re
@@ -144,42 +149,53 @@ def _publish():
     modlog.info("release published successfully")
 
 def _code_analysis():
+    """Generates code analysis reports and metrics on the PyJen sources"""
     modlog.info("Running code analysis tools...")
 
+    # PyLint code analysis
+    # TODO: Fix pylint report
+    #   problem: pylint always returns an error code, so using check_output the output string
+    #   never gets returned because the functions throws an exception when a non zero error is returned
+    # TODO: try running pylint directly using: import pylint; pylint.Run()
     pyjen_path = os.path.join(os.path.curdir, "pyjen")
-    cmd = ["pylint", "--rcfile=.pylint", "-f", "parseable", "pyjen"]
-    result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, universal_newlines=True)
     lint_log_filename = os.path.join(log_folder, "pylint.log")
-    lint_log_file = open(lint_log_filename)
-    lint_log_file.write(result)
-    lint_log_file.close()
-    
-    # first generate cyclomatic complexities for source files in XML format for integration with external tools
-    result = subprocess.check_output(["radon", "cc", "-sa", "--xml", pyjen_path], stderr=subprocess.STDOUT, universal_newlines=True)
+    cmd = ["pylint", "--rcfile=.pylint", "-f", "parseable", "pyjen", "&", 'exit(0)'.format(lint_log_filename)]
+    #result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, universal_newlines=True)
+
+    #with open(lint_log_filename) as lint_log_file:
+    #    lint_log_file.write(result)
+
+    modlog.info("Lint analysis can be found here: " + lint_log_filename)
+
+    # generate cyclomatic complexities for source files in XML format for integration with external tools
+    result = subprocess.check_output(["radon", "cc", "-sa", "--xml", pyjen_path],
+                                     stderr=subprocess.STDOUT, universal_newlines=True)
     complexity_log_filename = os.path.join(log_folder, "radon_complexity.xml")
-    complexity_log_file = open(complexity_log_filename)
-    complexity_log_file.write(result)
-    complexity_log_file.close()
-    
+    with open(complexity_log_filename, "w") as complexity_log_file:
+        complexity_log_file.write(result)
+
     # next run all code analysers against all source files
+    # TODO: Break the logs out into separate files for easier auditing and review
+    # TODO: tweak this processing loop to prevent superfluous files from being audited
     stats_log_filename = os.path.join(log_folder, "stats.log")
-    modlog.debug("Creating code analysis log file " + stats_log_filename)
-    stats_log = open(stats_log_filename, "w")
+    with open(stats_log_filename, "w") as stats_log:
+        for (folder, subfolders, files) in os.walk(pyjen_path):
+            for cur_file in files:
+                cur_file_full_path = os.path.join(folder, cur_file)
+                result = subprocess.check_output(["radon", "cc", "-sa", cur_file_full_path],
+                                                 stderr=subprocess.STDOUT, universal_newlines=True)
+                modlog.debug(result)
+                stats_log.write(result)
+                result = subprocess.check_output(["radon", "raw", "-s", cur_file_full_path],
+                                                 stderr=subprocess.STDOUT, universal_newlines=True)
+                modlog.debug(result)
+                stats_log.write(result)
+                result = subprocess.check_output(["radon", "mi", "-s", cur_file_full_path],
+                                                 stderr=subprocess.STDOUT, universal_newlines=True)
+                modlog.debug(result)
+                stats_log.write(result)
 
-    for (folder, subfolders, files) in os.walk(pyjen_path):
-        for cur_file in files:
-            cur_file_full_path = os.path.join(folder, cur_file)
-            result = subprocess.check_output(["radon", "cc", "-sa", cur_file_full_path], stderr=subprocess.STDOUT, universal_newlines=True)
-            modlog.log(VERBOSE_LOGGING_LEVEL, result)
-            stats_log.write(result)
-            result = subprocess.check_output(["radon", "raw", "-s", cur_file_full_path], stderr=subprocess.STDOUT, universal_newlines=True)
-            modlog.log(VERBOSE_LOGGING_LEVEL, result)
-            stats_log.write(result)
-            result = subprocess.check_output(["radon", "mi", "-s", cur_file_full_path], stderr=subprocess.STDOUT, universal_newlines=True)
-            modlog.log(VERBOSE_LOGGING_LEVEL, result)
-            stats_log.write(result)
-
-    stats_log.close()
+    modlog.info("Radon analysis can be found here: " + stats_log_filename)
     modlog.info("Code analysis complete")
 
 def _run_tests(RunFuncTests):
@@ -234,6 +250,7 @@ def _make_docs():
     with open("pypi_homepage.html", "w") as outfile:
         outfile.write(homepage_html.decode("utf-8"))
 
+    # TODO: Find a way to do some basic verification on the documentation output
     modlog.info("Documentation complete")
 
 def _configure_logger():
@@ -275,17 +292,17 @@ def _get_args():
 
     :returns: set of parameters provided by the user on the command line
     """
-    _parser = argparse.ArgumentParser( description='PyJen source project configuration utility')
-    
+    _parser = argparse.ArgumentParser(description='PyJen source project configuration utility')
+
+    _parser.add_argument('-v', '--version', action='store_true', help='Display the PyJen version number')
     _parser.add_argument('-e', '--prep_env', action='store_true', help='Install all Python packages used by PyJen sources')
     _parser.add_argument('-p', '--package', action='store_true', help='Generate redistributable package for PyJen')
-    _parser.add_argument('--stats', action='store_true', help='Run static code analysis again PyJen sources')
+    _parser.add_argument('-s', '--stats', action='store_true', help='Run static code analysis again PyJen sources')
     _parser.add_argument('-u', '--publish', action='store_true', help='Publish release artifacts online to PyPI')
     _parser.add_argument('-t', '--test', action='store_true', help='Runs the suite of unit tests and generates metrics about the tests')
     _parser.add_argument('-f', '--functional_test', action='store_true', help='Runs the more time consuming functional test suite')
     _parser.add_argument('-d', '--docs', action='store_true', help='Generate online documentation for the project')
     # TODO: Consider using this to invoke a function when option is specified: test_parser.set_defaults()
-    # TODO: Add a -v, --version parameter that loads a version property stored in pyjen scripts and is also used by setup.py
 
     # If no command line arguments provided, display the online help and exit
     if len(sys.argv) == 1:
@@ -307,6 +324,9 @@ if __name__ == "__main__":
 
     if args.prep_env:
         _prepare_env()
+
+    if args.version:
+        _show_version()
 
     if args.test or args.functional_test:
         _run_tests(args.functional_test)
