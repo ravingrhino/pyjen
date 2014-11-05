@@ -206,6 +206,36 @@ def _run_tests(RunFuncTests):
 
     modlog.info("finished running tests")
 
+def _make_docs():
+    """Generates the online documentation for the project"""
+    modlog.info("Generating API documentation...")
+
+    if os.path.exists("./docs"):
+        shutil.rmtree("./docs")
+
+    # First generate the documentation build scripts
+    cur_dir = os.getcwd()
+    os.chdir("./docs/source")
+    result = subprocess.check_output(["sphinx-apidoc", "-o", ".", "../../pyjen"],
+                                     stderr=subprocess.STDOUT, universal_newlines=True)
+    modlog.debug(result)
+
+    # Then generate the acutal content
+    os.chdir('..')
+    result = subprocess.check_output(["make.bat", "html"], stderr=subprocess.STDOUT, universal_newlines=True)
+    modlog.debug(result)
+    os.chdir(cur_dir)
+
+    # for extra verification, lets generate a sample PyPI homepage as well
+    from docutils.core import publish_string
+    homepage_content = subprocess.check_output(["python", "setup.py", "--long-description"],
+                                               stderr=subprocess.STDOUT, universal_newlines=True)
+    homepage_html = publish_string(homepage_content, writer_name='html')
+    with open("pypi_homepage.html", "w") as outfile:
+        outfile.write(homepage_html.decode("utf-8"))
+
+    modlog.info("Documentation complete")
+
 def _configure_logger():
     """Configure the custom logger for this script
 
@@ -251,8 +281,9 @@ def _get_args():
     _parser.add_argument('-p', '--package', action='store_true', help='Generate redistributable package for PyJen')
     _parser.add_argument('--stats', action='store_true', help='Run static code analysis again PyJen sources')
     _parser.add_argument('-u', '--publish', action='store_true', help='Publish release artifacts online to PyPI')
-    _parser.add_argument('-t', '--test', action='store_true', help='Runs the suite of unit tests and generates metrcs about the tests')
+    _parser.add_argument('-t', '--test', action='store_true', help='Runs the suite of unit tests and generates metrics about the tests')
     _parser.add_argument('-f', '--functional_test', action='store_true', help='Runs the more time consuming functional test suite')
+    _parser.add_argument('-d', '--docs', action='store_true', help='Generate online documentation for the project')
     # TODO: Consider using this to invoke a function when option is specified: test_parser.set_defaults()
     # TODO: Add a -v, --version parameter that loads a version property stored in pyjen scripts and is also used by setup.py
     # TODO: Add option for generating documentation
@@ -289,3 +320,6 @@ if __name__ == "__main__":
 
     if args.test or args.functional_test:
         _run_tests(args.functional_test)
+
+    if args.docs:
+        _make_docs()
