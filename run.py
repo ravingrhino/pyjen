@@ -196,8 +196,12 @@ def _configure_logger():
 
     # Primary logger will write all messages to a log file
     log_file = os.path.join(log_folder, "run.log")
+    if os.path.exists(log_file):
+        os.remove(log_file)
     file_logger = logging.FileHandler(log_file)
-    file_logger.setFormatter("%(asctime)s %(levelname)s:%(message)s")
+    file_logger_format = "%(asctime)s %(levelname)s:%(message)s"
+    file_formatter = logging.Formatter(file_logger_format)
+    file_logger.setFormatter(file_formatter)
     file_logger.setLevel(logging.DEBUG)
 
     modlog.addHandler(file_logger)
