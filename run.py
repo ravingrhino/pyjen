@@ -13,10 +13,6 @@ REQUIREMENTS = ['requests', 'wheel', 'sphinx', 'pytest', 'pytest-cov', 'mock', '
 # Folder where log files will be stored
 log_folder = os.path.abspath(os.path.join(os.path.curdir, "logs"))
 
-# Used to output detailed output to the logger that isn't just simply for
-# informational purpose but yet not as verbose as full debugging output.
-VERBOSE_LOGGING_LEVEL=15
-
 # Set a global logger for use by this script
 modlog = logging.getLogger('pyjen').addHandler(logging.NullHandler())
 
@@ -154,19 +150,21 @@ def _code_analysis():
     modlog.info("Running code analysis tools...")
 
     # PyLint code analysis
-    # TODO: Fix pylint report
-    #   problem: pylint always returns an error code, so using check_output the output string
-    #   never gets returned because the functions throws an exception when a non zero error is returned
-    # TODO: try running pylint directly using: import pylint; pylint.Run(args, exit=False, **kwargs)
-    pyjen_path = os.path.join(os.path.curdir, "pyjen")
-    lint_log_filename = os.path.join(log_folder, "pylint.log")
-    cmd = ["pylint", "--rcfile=.pylint", "-f", "parseable", "pyjen", "&", 'exit(0)'.format(lint_log_filename)]
-    #result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, universal_newlines=True)
+    from pylint import epylint as lint
+    pyjen_path = os.path.join(os.getcwd(), "pyjen")
 
-    #with open(lint_log_filename) as lint_log_file:
-    #    lint_log_file.write(result)
+    # now we generate a pylint report in HTML format
+    params = "pyjen --rcfile=.pylint -f html"
+    with open(os.path.join(log_folder, "pylint.html"), "w") as std:
+        with open(os.path.join(log_folder, "pylint_html_err.log"), "w") as err:
+            lint.py_run(params, stdout=std, stderr=err)
 
-    modlog.info("Lint analysis can be found here: " + lint_log_filename)
+    # next we generate a pylint report in 'parseable' format, for use on build automation
+    params = "pyjen --rcfile=.pylint -f parseable"
+    with open(os.path.join(log_folder, "pylint.txt"), "w") as std:
+        with open(os.path.join(log_folder, "pylint_xml_err.log"), "w") as err:
+            lint.py_run(params, stdout=std, stderr=err)
+    modlog.info("Lint analysis can be found in ./" + os.path.relpath(log_folder, os.getcwd()) + "/pylint.html")
 
     # generate cyclomatic complexities for source files in XML format for integration with external tools
     result = subprocess.check_output(["radon", "cc", "-sa", "--xml", pyjen_path],
@@ -209,7 +207,7 @@ def _code_analysis():
                     modlog.debug(result)
                     stats_log.write(result)
 
-    modlog.info("Radon analysis can be found here: " + log_folder + " (stats*.log)")
+    modlog.info("Radon analysis can be found here: ./" + os.path.relpath(log_folder, os.getcwd()) + "/stats*.log")
     modlog.info("Code analysis complete")
 
 
