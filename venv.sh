@@ -1,7 +1,5 @@
 #!/bin/bash
-# TODO: Remove code from here that has now been moved to the bootstrap script
 # Linux configuration script that prepares the local build environment
-# to support all PyJen build and test operations
 #
 # Run without any command line parameters to get usage information
 
