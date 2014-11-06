@@ -253,8 +253,8 @@ def _make_docs():
 
     # setup our source folder
     os.makedirs(src_dir)
-    shutil.copyfile(os.path.join(doc_dir, "conf.py"), src_dir)
-    shutil.copyfile(os.path.join(doc_dir, "index.rst"), src_dir)
+    shutil.copy(os.path.join(doc_dir, "conf.py"), src_dir)
+    shutil.copy(os.path.join(doc_dir, "index.rst"), src_dir)
 
     # First generate the documentation build scripts
     cur_dir = os.getcwd()
