@@ -240,18 +240,31 @@ def _make_docs():
     """Generates the online documentation for the project"""
     modlog.info("Generating API documentation...")
 
-    if os.path.exists("./docs"):
-        shutil.rmtree("./docs")
+    # TODO: Find a way to organize our files to avoid having to do so much initialization work
+    # Purge any previous build artifacts
+    doc_dir = os.path.join(os.getcwd(), "docs")
+    build_dir = os.path.join(doc_dir, "build")
+    if os.path.exists(build_dir):
+        shutil.rmtree(build_dir)
+
+    src_dir = os.path.join(doc_dir, "source")
+    if os.path.exists(src_dir):
+        shutil.rmtree(src_dir)
+
+    # setup our source folder
+    os.makedirs(src_dir)
+    shutil.copyfile(os.path.join(doc_dir, "conf.py"), src_dir)
+    shutil.copyfile(os.path.join(doc_dir, "index.rst"), src_dir)
 
     # First generate the documentation build scripts
     cur_dir = os.getcwd()
-    os.chdir("./docs/source")
+    os.chdir(src_dir)
     result = subprocess.check_output(["sphinx-apidoc", "-o", ".", "../../pyjen"],
                                      stderr=subprocess.STDOUT, universal_newlines=True)
     modlog.debug(result)
 
     # Then generate the actual content
-    os.chdir('..')
+    os.chdir(doc_dir)
     result = subprocess.check_output(["make.bat", "html"], stderr=subprocess.STDOUT, universal_newlines=True)
     modlog.debug(result)
     os.chdir(cur_dir)
